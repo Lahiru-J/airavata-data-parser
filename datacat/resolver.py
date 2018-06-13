@@ -12,10 +12,10 @@ file_name = sys.argv[2]             # Input file to the experiment
 output_file_name = sys.argv[3]      # Output file name which is going to be generated from the experiment
 
 if experiment_type == EXP_GAUSSIAN:
-    print("Gaussian")
+    gaussian.parse(file_name, output_file_name)
 elif experiment_type == EXP_GAMESS:
-    print("Gamess")
+    gamess.parse(file_name, output_file_name)
 elif experiment_type == EXP_MOLPRO:
-    print("Molpro")
+    molpro.parse(file_name, output_file_name)
 elif experiment_type == EXP_NEWCHEM:
-    print("New Chem")
+    newchem.parse(file_name, output_file_name)
