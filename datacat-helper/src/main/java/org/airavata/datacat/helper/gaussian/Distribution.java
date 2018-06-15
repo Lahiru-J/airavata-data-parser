@@ -108,20 +108,20 @@ public class Distribution {
             returnArr[3] = values.toArray(new Double[values.size()]);
 
             StringBuilder str = new StringBuilder();
-            try{
-                if(returnArr[0] != null && returnArr[0].length > 0) {
+            try {
+                if (returnArr[0] != null && returnArr[0].length > 0) {
                     str.append("Iterations:").append(returnArr[0]).append(",");
                 }
-                if(returnArr[1] != null && returnArr[1].length > 0){
+                if (returnArr[1] != null && returnArr[1].length > 0) {
                     str.append("MaximumGradientDistribution:").append(returnArr[1]).append(",");
                 }
-                if(returnArr[2] != null && returnArr[2].length > 0) {
+                if (returnArr[2] != null && returnArr[2].length > 0) {
                     str.append("RMSGradientDistribution:").append(returnArr[2]).append(",");
                 }
-                if(returnArr[3] != null && returnArr[3].length > 0){
+                if (returnArr[3] != null && returnArr[3].length > 0) {
                     str.append("EnergyDistribution:").append(returnArr[3]);
                 }
-            }catch (Exception ex){
+            } catch (Exception ex) {
                 ex.printStackTrace();
             }
 
