@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public class Distribution {
 
-    public static Double[][] getValues(String gaussianOutputFile) throws Exception {
+    public static String getValues(String gaussianOutputFile) throws Exception {
         //First find the method
         MethodParser pp = new MethodParser(new MethodLexer(new FileReader(gaussianOutputFile)));
         pp.parse();
@@ -107,7 +107,25 @@ public class Distribution {
             }
             returnArr[3] = values.toArray(new Double[values.size()]);
 
-            return returnArr;
+            StringBuilder str = new StringBuilder();
+            try{
+                if(returnArr[0] != null && returnArr[0].length > 0) {
+                    str.append("Iterations:").append(returnArr[0]).append(",");
+                }
+                if(returnArr[1] != null && returnArr[1].length > 0){
+                    str.append("MaximumGradientDistribution:").append(returnArr[1]).append(",");
+                }
+                if(returnArr[2] != null && returnArr[2].length > 0) {
+                    str.append("RMSGradientDistribution:").append(returnArr[2]).append(",");
+                }
+                if(returnArr[3] != null && returnArr[3].length > 0){
+                    str.append("EnergyDistribution:").append(returnArr[3]);
+                }
+            }catch (Exception ex){
+                ex.printStackTrace();
+            }
+
+            return str.toString();
         }
 
         return null;
