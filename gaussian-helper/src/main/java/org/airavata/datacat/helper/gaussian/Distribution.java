@@ -110,13 +110,13 @@ public class Distribution {
             StringBuilder str = new StringBuilder();
             try {
                 if (returnArr[0] != null && returnArr[0].length > 0) {
-                    str.append("Iterations:").append(returnArr[0]).append(",");
+                    str.append("Iterations:").append(returnArr[0]).append(System.lineSeparator());
                 }
                 if (returnArr[1] != null && returnArr[1].length > 0) {
-                    str.append("MaximumGradientDistribution:").append(returnArr[1]).append(",");
+                    str.append("MaximumGradientDistribution:").append(returnArr[1]).append(System.lineSeparator());
                 }
                 if (returnArr[2] != null && returnArr[2].length > 0) {
-                    str.append("RMSGradientDistribution:").append(returnArr[2]).append(",");
+                    str.append("RMSGradientDistribution:").append(returnArr[2]).append(System.lineSeparator());
                 }
                 if (returnArr[3] != null && returnArr[3].length > 0) {
                     str.append("EnergyDistribution:").append(returnArr[3]);
