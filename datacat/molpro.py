@@ -1,7 +1,9 @@
+import calendar
 import json
 import pybel
 import sys
 from collections import OrderedDict
+from datetime import datetime
 
 from cclib.parser import ccopen
 
@@ -11,66 +13,104 @@ from ccdbt.ParserLoader import ParserPyramid
 
 def parse(file_name, output_file_name):
     result = OrderedDict()
+    identifiers = OrderedDict()
+    calculation = OrderedDict()
+    molecule = OrderedDict()
+    calculated_properties = OrderedDict()
+    execution_environment = OrderedDict()
+    molecule_structural_formats = OrderedDict()
 
     # extracting fields from open-babel
     mol = pybel.readfile('mpo', file_name).next()
-    result['InChI'] = mol.write('inchi').strip()
-    result['InChIKey'] = mol.write('inchikey').strip()
-    result['SMILES'] = mol.write('smiles').split('\t')[0]
-    result['CanonicalSMILES'] = mol.write('can').split('\t')[0]
-    result['PDB'] = mol.write('pdb').split('\t')[0]
-    result['SDF'] = mol.write('sdf').split('\t')[0]
+    identifiers['InChI'] = mol.write('inchi').strip()
+    identifiers['InChIKey'] = mol.write('inchikey').strip()
+    identifiers['SMILES'] = mol.write('smiles').split('\t')[0]
+    identifiers['CanonicalSMILES'] = mol.write('can').split('\t')[0]
+    molecule_structural_formats['PDB'] = mol.write('pdb').split('\t')[0]
+    molecule_structural_formats['SDF'] = mol.write('sdf').split('\t')[0]
 
     # extracting fields from ccdbt
     parser_pyramid = ParserPyramid()
     meta_f = metafile(file_name)
     if meta_f.parse(parser_pyramid):
+        if 'CodeVersion' in meta_f.record:
+            calculation['Package'] = meta_f.record['CodeVersion']
+        if 'Methods' in meta_f.record:
+            calculation['Methods'] = meta_f.record['Methods']
+        if 'Keywords' in meta_f.record:
+            calculation['Keywords'] = meta_f.record['Keywords']
+        if 'Basis' in meta_f.record:
+            calculation['Basis'] = meta_f.record['Basis']
+        if 'CalcType' in meta_f.record:
+            calculation['CalcType'] = meta_f.record['CalcType']
+        if 'JobStatus' in meta_f.record:
+            calculation['JobStatus'] = meta_f.record['JobStatus']
+
+        if 'Formula' in meta_f.record:
+            molecule['Formula'] = meta_f.record['Formula']
+        if 'OrbSym' in meta_f.record:
+            molecule['OrbSym'] = meta_f.record['OrbSym']
+        if 'Multiplicity' in meta_f.record:
+            molecule['Multiplicity'] = meta_f.record['Multiplicity']
+        if 'Charge' in meta_f.record:
+            molecule['Charge'] = meta_f.record['Charge']
+        if 'ElecSym' in meta_f.record:
+            molecule['ElecSym'] = meta_f.record['ElecSym']
+
+        if 'Energy' in meta_f.record:
+            calculated_properties['Energy'] = meta_f.record['Energy']
+        if 'Dipole' in meta_f.record:
+            calculated_properties['Dipole'] = meta_f.record['Dipole']
+        if 'HF' in meta_f.record:
+            calculated_properties['HF'] = meta_f.record['HF']
+
+        if 'CalcMachine' in meta_f.record:
+            execution_environment['CalcMachine'] = meta_f.record['CalcMachine']
+        if 'FinTime' in meta_f.record:
+            execution_environment['FinTime'] = meta_f.record['FinTime']
+            fin_date = datetime.strptime(execution_environment['FinTime'], '%d %b %y')
+            execution_environment['FinTimeStamp'] = datetime.utcfromtimestamp(calendar.timegm(fin_date.timetuple()))
+        if 'CalcBy' in meta_f.record:
+            execution_environment['CalcBy'] = meta_f.record['CalcBy']
+
+
+
+
+
         if 'ParsedBy' in meta_f.record:
             result['ParsedBy'] = meta_f.record['ParsedBy']
-        if 'Formula' in meta_f.record:
-            result['Formula'] = meta_f.record['Formula']
-        if 'Charge' in meta_f.record:
-            result['Charge'] = meta_f.record['Charge']
-        if 'Multiplicity' in meta_f.record:
-            result['Multiplicity'] = meta_f.record['Multiplicity']
-        if 'Keywords' in meta_f.record:
-            result['Keywords'] = meta_f.record['Keywords']
-        if 'CalcType' in meta_f.record:
-            result['CalcType'] = meta_f.record['CalcType']
-        if 'Methods' in meta_f.record:
-            result['Methods'] = meta_f.record['Methods']
-        if 'Basis' in meta_f.record:
-            result['Basis'] = meta_f.record['Basis']
+
+
+
+
+
+
+
         if 'NumBasis' in meta_f.record:
             result['NumBasis'] = meta_f.record['NumBasis']
         if 'NumFC' in meta_f.record:
             result['NumFC'] = meta_f.record['NumFC']
         if 'NumVirt' in meta_f.record:
             result['NumVirt'] = meta_f.record['NumVirt']
-        if 'JobStatus' in meta_f.record:
-            result['JobStatus'] = meta_f.record['JobStatus']
-        if 'FinTime' in meta_f.record:
-            result['FinTime'] = meta_f.record['FinTime']
+
+
         if 'InitGeom' in meta_f.record:
             result['InitGeom'] = meta_f.record['InitGeom']
         if 'FinalGeom' in meta_f.record:
             result['FinalGeom'] = meta_f.record['FinalGeom']
         if 'PG' in meta_f.record:
             result['PG'] = meta_f.record['PG']
-        if 'ElecSym' in meta_f.record:
-            result['ElecSym'] = meta_f.record['ElecSym']
+
         if 'NImag' in meta_f.record:
             result['NImag'] = meta_f.record['NImag']
-        if 'Energy' in meta_f.record:
-            result['Energy'] = meta_f.record['Energy']
+
         if 'EnergyKcal' in meta_f.record:
             result['EnergyKcal'] = meta_f.record['EnergyKcal']
         if 'ZPE' in meta_f.record:
             result['ZPE'] = meta_f.record['ZPE']
         if 'ZPEKcal' in meta_f.record:
             result['ZPEKcal'] = meta_f.record['ZPEKcal']
-        if 'HF' in meta_f.record:
-            result['HF'] = meta_f.record['HF']
+
         if 'HFKcal' in meta_f.record:
             result['HFKcal'] = meta_f.record['HFKcal']
         if 'Thermal' in meta_f.record:
@@ -89,10 +129,8 @@ def parse(file_name, output_file_name):
             result['Gibbs'] = meta_f.record['Gibbs']
         if 'GibbsKcal' in meta_f.record:
             result['GibbsKcal'] = meta_f.record['GibbsKcal']
-        if 'OrbSym' in meta_f.record:
-            result['OrbSym'] = meta_f.record['OrbSym']
-        if 'Dipole' in meta_f.record:
-            result['Dipole'] = meta_f.record['Dipole']
+
+
         if 'Freq' in meta_f.record:
             result['Freq'] = meta_f.record['Freq']
         if 'AtomWeigh' in meta_f.record:
@@ -109,12 +147,9 @@ def parse(file_name, output_file_name):
             result['NatCharge'] = meta_f.record['NatCharge']
         if 'S2' in meta_f.record:
             result['S2'] = meta_f.record['S2']
-        if 'CodeVersion' in meta_f.record:
-            result['CodeVersion'] = meta_f.record['CodeVersion']
-        if 'CalcMachine' in meta_f.record:
-            result['CalcMachine'] = meta_f.record['CalcMachine']
-        if 'CalcBy' in meta_f.record:
-            result['CalcBy'] = meta_f.record['CalcBy']
+
+
+
         if 'MemCost' in meta_f.record:
             result['MemCost'] = meta_f.record['MemCost']
         if 'TimeCost' in meta_f.record:
@@ -138,9 +173,9 @@ def parse(file_name, output_file_name):
         data = myfile.parse()
         data.listify()
         if hasattr(data, 'natom'):
-            result['NAtom'] = data.natom
+            molecule['NAtom'] = data.natom
         if hasattr(data, 'homos'):
-            result['Homos'] = data.homos
+            calculated_properties['Homos'] = data.homos
         if hasattr(data, 'scfenergies'):
             result['ScfEnergies'] = data.scfenergies
         if hasattr(data, 'coreelectrons'):
@@ -152,9 +187,9 @@ def parse(file_name, output_file_name):
         if hasattr(data, 'scftargets'):
             result['ScfTargets'] = data.scftargets
         if hasattr(data, 'nmo'):
-            result['Nmo'] = data.nmo
+            molecule['Nmo'] = data.nmo
         if hasattr(data, 'nbasis'):
-            result['NBasis'] = data.nbasis
+            calculation['NBasis'] = data.nbasis
         if hasattr(data, 'atomnos'):
             result['AtomNos'] = data.atomnos
     except:
@@ -162,6 +197,13 @@ def parse(file_name, output_file_name):
 
     # Drawing the molecule
     # mol.draw(show=False, filename=molecule_image_file)
+
+    result['Identifiers'] = identifiers
+    result['Calculation'] = calculation
+    result['Molecule'] = molecule
+    result['CalculatedProperties'] = calculated_properties
+    result['ExecutionEnvironment'] = execution_environment
+    result['FinalMoleculeStructuralFormats'] = molecule_structural_formats
 
     result = json.dumps(result, separators=(',', ':'), sort_keys=False, indent=4)
     json.dump()
