@@ -7,8 +7,8 @@ from datetime import datetime
 
 from cclib.parser import ccopen
 
-from ccdbt.MetaFile import metafile
-from ccdbt.ParserLoader import ParserPyramid
+from datacat.ccdbt.MetaFile import metafile
+from datacat.ccdbt.ParserLoader import ParserPyramid
 
 
 def parse(file_name, output_file_name):
@@ -21,7 +21,7 @@ def parse(file_name, output_file_name):
     molecule_structural_formats = OrderedDict()
 
     # extracting fields from open-babel
-    mol = pybel.readfile('mpo', file_name).next()
+    mol = pybel.readfile('nwo', file_name).next()
     identifiers['InChI'] = mol.write('inchi').strip()
     identifiers['InChIKey'] = mol.write('inchikey').strip()
     identifiers['SMILES'] = mol.write('smiles').split('\t')[0]
@@ -149,30 +149,30 @@ def parse(file_name, output_file_name):
         # End of not updated key-value pairs
 
     # extracting fields from cclib
-    myfile = ccopen(file_name)
+    my_file = ccopen(file_name)
     try:
-        data = myfile.parse()
+        data = my_file.parse()
         data.listify()
         if hasattr(data, 'natom'):
             molecule['NAtom'] = data.natom
         if hasattr(data, 'homos'):
             calculated_properties['Homos'] = data.homos
         if hasattr(data, 'scfenergies'):
-            result['ScfEnergies'] = data.scfenergies        # Not updated by the seagrid-data
+            result['ScfEnergies'] = data.scfenergies            # Not updated by the seagrid-data
         if hasattr(data, 'coreelectrons'):
-            result['CoreElectrons'] = data.coreelectrons    # Not updated by the seagrid-data
+            result['CoreElectrons'] = data.coreelectrons        # Not updated by the seagrid-data
         if hasattr(data, 'moenergies'):
-            result['MoEnergies'] = data.moenergies          # Not updated by the seagrid-data
+            result['MoEnergies'] = data.moenergies              # Not updated by the seagrid-data
         if hasattr(data, 'atomcoords'):
-            result['AtomCoords'] = data.atomcoords          # Not updated by the seagrid-data
+            result['AtomCoords'] = data.atomcoords              # Not updated by the seagrid-data
         if hasattr(data, 'scftargets'):
-            result['ScfTargets'] = data.scftargets          # Not updated by the seagrid-data
+            result['ScfTargets'] = data.scftargets              # Not updated by the seagrid-data
         if hasattr(data, 'nmo'):
             molecule['Nmo'] = data.nmo
         if hasattr(data, 'nbasis'):
             calculation['NBasis'] = data.nbasis
         if hasattr(data, 'atomnos'):
-            result['AtomNos'] = data.atomnos                # Not updated by the seagrid-data
+            result['AtomNos'] = data.atomnos                    # Not updated by the seagrid-data
     except:
         sys.stderr.write('cclib parsing failed!')
 
@@ -187,7 +187,6 @@ def parse(file_name, output_file_name):
     result['FinalMoleculeStructuralFormats'] = molecule_structural_formats
 
     result = json.dumps(result, separators=(',', ':'), sort_keys=False, indent=4)
-    json.dump()
     output_file = open(output_file_name, 'w')
     for row in result:
         output_file.write(row)

@@ -1,22 +1,17 @@
 import calendar
 import json
+import pybel
 import sys
 from collections import OrderedDict
 from datetime import datetime
-from os import listdir
-from os.path import isfile, join
-from subprocess import Popen, PIPE, STDOUT
 
-import pybel
 from cclib.parser import ccopen
 
-from ccdbt.MetaFile import metafile
-from ccdbt.ParserLoader import ParserPyramid
-
-WORKING_DIR = "../working-dir"
+from datacat.ccdbt.MetaFile import metafile
+from datacat.ccdbt.ParserLoader import ParserPyramid
 
 
-def parse(file_name, local_directory, output_file_name):
+def parse(file_name, output_file_name):
     result = OrderedDict()
     identifiers = OrderedDict()
     calculation = OrderedDict()
@@ -24,15 +19,13 @@ def parse(file_name, local_directory, output_file_name):
     calculated_properties = OrderedDict()
     execution_environment = OrderedDict()
     molecule_structural_formats = OrderedDict()
-    files_dict = OrderedDict()
 
     # extracting fields from open-babel
-    mol = pybel.readfile('g98', file_name).next()
+    mol = pybel.readfile('gamout', file_name).next()
     identifiers['InChI'] = mol.write('inchi').strip()
     identifiers['InChIKey'] = mol.write('inchikey').strip()
     identifiers['SMILES'] = mol.write('smiles').split('\t')[0]
     identifiers['CanonicalSMILES'] = mol.write('can').split('\t')[0]
-
     molecule_structural_formats['PDB'] = mol.write('pdb').split('\t')[0]
     molecule_structural_formats['SDF'] = mol.write('sdf').split('\t')[0]
 
@@ -42,16 +35,16 @@ def parse(file_name, local_directory, output_file_name):
     if meta_f.parse(parser_pyramid):
         if 'CodeVersion' in meta_f.record:
             calculation['Package'] = meta_f.record['CodeVersion']
-        if 'CalcType' in meta_f.record:
-            calculation['CalcType'] = meta_f.record['CalcType']
         if 'Methods' in meta_f.record:
             calculation['Methods'] = meta_f.record['Methods']
-        if 'Basis' in meta_f.record:
-            calculation['Basis'] = __extract(meta_f.record['Basis'])
         if 'Keywords' in meta_f.record:
             calculation['Keywords'] = meta_f.record['Keywords']
+        if 'Basis' in meta_f.record:
+            calculation['Basis'] = meta_f.record['Basis']
+        if 'CalcType' in meta_f.record:
+            calculation['CalcType'] = meta_f.record['CalcType']
         if 'JobStatus' in meta_f.record:
-            calculation['JobStatus'] = __extract(meta_f.record['JobStatus'])
+            calculation['JobStatus'] = meta_f.record['JobStatus']
 
         if 'Formula' in meta_f.record:
             molecule['Formula'] = meta_f.record['Formula']
@@ -71,121 +64,14 @@ def parse(file_name, local_directory, output_file_name):
         if 'HF' in meta_f.record:
             calculated_properties['HF'] = meta_f.record['HF']
 
-        # Calling the jar to get distribution values
-        process = Popen(['java', '-jar', './gaussian-helper.jar', '--arg=' + file_name], stdout=PIPE, stderr=STDOUT)
-        for line in process.stdout:
-            value = line.split(':')
-            if value[0] == 'Iterations':
-                calculated_properties['Iterations'] = value[1]
-            elif value[0] == 'MaximumGradientDistribution':
-                calculated_properties['MaximumGradientDistribution'] = value[1]
-            elif value[0] == 'RMSGradientDistribution':
-                calculated_properties['RMSGradientDistribution'] = value[1]
-            elif value[0] == 'EnergyDistribution':
-                calculated_properties['EnergyDistribution'] = value[1]
-
         if 'CalcMachine' in meta_f.record:
-            tmp = str(meta_f.record['CalcMachine'])
-            if ';' in tmp:
-                line = tmp.split(';')[0]
-                bits = line.split('-')
-                if len(bits) == 4:
-                    execution_environment['CalcMachine'] = bits[1]
-                else:
-                    execution_environment['CalcMachine'] = line
-
-            else:
-                bits = tmp.split('-')
-                if len(bits) == 4:
-                    execution_environment['CalcMachine'] = bits[1]
-                else:
-                    execution_environment['CalcMachine'] = tmp
-
+            execution_environment['CalcMachine'] = meta_f.record['CalcMachine']
         if 'FinTime' in meta_f.record:
-            execution_environment['FinTime'] = __extract(meta_f.record['FinTime'])
+            execution_environment['FinTime'] = meta_f.record['FinTime']
             fin_date = datetime.strptime(execution_environment['FinTime'], '%d %b %y')
             execution_environment['FinTimeStamp'] = datetime.utcfromtimestamp(calendar.timegm(fin_date.timetuple()))
-
         if 'CalcBy' in meta_f.record:
-            execution_environment['CalcBy'] = __extract(meta_f.record['CalcBy'])
-
-        for f in listdir(WORKING_DIR):
-            if isfile(join(WORKING_DIR, f)):  # Check this in docker container
-                if f.endswith('.out') or f.endswith('.log'):
-                    files_dict['GaussianOutputFile'] = join(local_directory, f)  # If exists include the absolute path
-                elif f.endswith('.com') or f.endswith('.in'):
-                    files_dict['GaussianInputFile'] = join(local_directory, f)
-                elif f.endswith('.chk'):
-                    files_dict['GaussianCheckpointFile'] = join(local_directory, f)
-                elif f.endswith('.fchk'):
-                    files_dict['GaussianFCheckpointFile'] = join(local_directory, f)
-
-        with open(join(WORKING_DIR, 'structure.sdf'), 'w') as output:
-            output.write(str(molecule_structural_formats['SDF']))
-        files_dict['SDFStructureFile'] = join(local_directory, 'structure.sdf')  # Local directory path as the key
-
-        with open(join(WORKING_DIR, 'structure.pdb'), 'w') as output:
-            output.write(str(molecule_structural_formats['PDB']))
-        files_dict['PDBStructureFile'] = join(local_directory, 'structure.pdb')
-
-        with open(join(WORKING_DIR, 'inchi.txt'), 'w') as output:
-            output.write(str(identifiers['InChI']))
-        files_dict['InChIFile'] = join(local_directory, 'inchi.txt')
-
-        with open(join(WORKING_DIR, 'smiles.txt'), 'w') as output:
-            output.write(str(identifiers['SMILES']))
-        files_dict['SMILESFile'] = join(local_directory, 'smiles.txt')
-
-        # Open Gaussian output file
-        # Extracting some fields which cannot be extracted from existing parsers
-        #   * Stoichiometry
-        #   * Job cpu time
-        #   * %mem
-        #   * %nprocshare
-
-        with open(file_name) as f:
-            content = f.readlines()
-
-        if content is not None and len(content) > 0:
-            for line in content:
-                if line.lower().startswith(' stoichiometry'):
-                    formula = line.replace('Stoichiometry', '').strip()
-                    molecule['Formula'] = formula
-                elif ' job cpu time' in line.lower():
-                    time = line.split(':')[1].strip()
-                    time.replace('days', '')
-                    time.replace('hours', '')
-                    time.replace('minutes', '')
-                    time.replace('seconds', '')
-                    time.replace(' +', '')
-
-                    time_arr = time.split(' ')
-                    time_in_seconds = 0.0
-                    time_in_seconds += float(time_arr[0]) * 86400
-                    time_in_seconds += float(time_arr[1]) * 3600
-                    time_in_seconds += float(time_arr[2]) * 60
-                    time_in_seconds += float(time_arr[3])
-
-                    execution_environment['JobCPURunTime'] = time_in_seconds
-
-                elif line.lower().startswith(' %mem'):
-                    memory = line.split('=')[1].strip().lower()
-                    # default memory is 256 MB
-                    memory_int = 256
-                    if memory.endswith('gw'):
-                        memory_int = int(memory[:-2]) * 1000 * 8
-                    elif memory.endswith('gb'):
-                        memory_int = int(memory[:-2]) * 1000
-                    elif memory.endswith('mw'):
-                        memory_int = int(memory[:-2]) * 8
-                    elif memory.endswith('mb'):
-                        memory_int = int(memory[:-2])
-
-                    execution_environment['Memory'] = memory_int
-
-                elif line.lower().startswith(' %nproc'):
-                    nproc = line.split('=')[1].strip()
-                    execution_environment['NProcShared'] = nproc
+            execution_environment['CalcBy'] = meta_f.record['CalcBy']
 
         # Rest of the key value pairs are not updated by the seagrid-data
         if 'ParsedBy' in meta_f.record:
@@ -260,6 +146,7 @@ def parse(file_name, local_directory, output_file_name):
             result['Otherinfo'] = meta_f.record['Otherinfo']
         if 'Comments' in meta_f.record:
             result['Comments'] = meta_f.record['Comments']
+        # End of not updated key-value pairs
 
     # extracting fields from cclib
     my_file = ccopen(file_name)
@@ -270,22 +157,22 @@ def parse(file_name, local_directory, output_file_name):
             molecule['NAtom'] = data.natom
         if hasattr(data, 'homos'):
             calculated_properties['Homos'] = data.homos
-        if hasattr(data, 'scfenergies'):                    # Not updated by the seagrid-data
-            result['ScfEnergies'] = data.scfenergies
-        if hasattr(data, 'coreelectrons'):                  # Not updated by the seagrid-data
-            result['CoreElectrons'] = data.coreelectrons
+        if hasattr(data, 'scfenergies'):
+            result['ScfEnergies'] = data.scfenergies                # Not updated by the seagrid-data
+        if hasattr(data, 'coreelectrons'):
+            result['CoreElectrons'] = data.coreelectrons            # Not updated by the seagrid-data
         if hasattr(data, 'moenergies'):
-            calculation['MoEnergies'] = data.moenergies
-        if hasattr(data, 'atomcoords'):                     # Not updated by the seagrid-data
-            result['AtomCoords'] = data.atomcoords
-        if hasattr(data, 'scftargets'):                     # Not updated by the seagrid-data
-            result['ScfTargets'] = data.scftargets
+            result['MoEnergies'] = data.moenergies                  # Not updated by the seagrid-data
+        if hasattr(data, 'atomcoords'):
+            result['AtomCoords'] = data.atomcoords                  # Not updated by the seagrid-data
+        if hasattr(data, 'scftargets'):
+            result['ScfTargets'] = data.scftargets                  # Not updated by the seagrid-data
         if hasattr(data, 'nmo'):
-            calculation['Nmo'] = data.nmo
+            molecule['Nmo'] = data.nmo
         if hasattr(data, 'nbasis'):
             calculation['NBasis'] = data.nbasis
-        if hasattr(data, 'atomnos'):                        # Not updated by the seagrid-data
-            result['AtomNos'] = data.atomnos
+        if hasattr(data, 'atomnos'):
+            result['AtomNos'] = data.atomnos                        # Not updated by the seagrid-data
     except:
         sys.stderr.write('cclib parsing failed!')
 
@@ -298,18 +185,9 @@ def parse(file_name, local_directory, output_file_name):
     result['CalculatedProperties'] = calculated_properties
     result['ExecutionEnvironment'] = execution_environment
     result['FinalMoleculeStructuralFormats'] = molecule_structural_formats
-    result['Files'] = files_dict
 
     result = json.dumps(result, separators=(',', ':'), sort_keys=False, indent=4)
     output_file = open(output_file_name, 'w')
     for row in result:
         output_file.write(row)
     output_file.close()
-
-
-def __extract(meta_record_value):
-    temp = str(meta_record_value)
-    if ';' in temp:
-        return temp.split(';')[0]
-    else:
-        return temp

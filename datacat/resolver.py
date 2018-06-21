@@ -1,5 +1,8 @@
 import sys
-import gaussian, gamess, molpro, newchem    # Scientific experiments
+from datacat.newchem import newchem
+from datacat.molpro import molpro
+from datacat.gamess import gamess
+from datacat.gaussian import gaussian
 
 # Define constants for the experiments
 EXP_GAUSSIAN = "gaussian"
