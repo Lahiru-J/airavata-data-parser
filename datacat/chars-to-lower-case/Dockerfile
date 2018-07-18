@@ -5,5 +5,5 @@ RUN \
   apt-get install -y python python-dev python-pip python-virtualenv && \
   rm -rf /var/lib/apt/lists/*
 
-ADD chars_to_lower_case.py /datacat/chars_to_lower_case.py
+ADD chars_to_lower_case.py /datacat/
 WORKDIR /datacat

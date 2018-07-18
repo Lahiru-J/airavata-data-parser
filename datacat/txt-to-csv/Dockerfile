@@ -5,5 +5,5 @@ RUN \
   apt-get install -y python python-dev python-pip python-virtualenv && \
   rm -rf /var/lib/apt/lists/*
 
-ADD txt_to_csv.py /datacat/txt_to_csv.py
+ADD txt_to_csv.py /datacat/
 WORKDIR /datacat
